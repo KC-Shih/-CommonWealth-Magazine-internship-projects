@@ -1,0 +1,376 @@
+---
+title: "Untitled"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r cars}
+library(dplyr)
+library(tidyverse)
+library(readxl)
+library(stringr)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+onecourse_list = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/onecourse_list.xlsx")
+CA_list = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/CA_list.xlsx")
+companycourse_list = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/companycourse_list.xlsx")
+API_case_list = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/API_case_list.xlsx")
+API_client = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/2020串接客戶.xlsx")
+industry_category_list = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/industry_category_list.xlsx")
+All_client = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/所有客戶名單.xlsx")
+#CA_list2019 = read_xlsx("D:/實習/天下創新學院/數據分析/Smart query/企業總表info_2019.xlsx")
+
+```
+
+#所有客戶名單
+```{r 所有客戶名單 join產業別進去}
+All_client_category = All_client%>%
+  left_join(subset(industry_category_list, select = c("名稱","產業別")),by = c("客戶名稱" = "名稱"))%>%
+  distinct(.,客戶名稱, .keep_all = TRUE)
+# 以变量x去重，返回所有变量
+
+#write.csv(All_client_category,"D:/實習/天下創新學院/報表製作資料/所有客戶_產業別.csv")
+
+```
+
+```{r}
+course_list = companycourse_list %>%
+  rename("課組名稱" = "課堂名稱(子頻道)")%>%
+  mutate("課組+課名" = paste(課組名稱,單堂課名稱,sep = "-"))%>%
+ #創建一個獨特欄位，因為課名一樣
+  left_join(onecourse_list, by = "課組+課名")%>%
+  select("主頻道","次頻道","單堂課編號","課組名稱.x","單堂課名稱.x","單堂課類型","單堂課上架日","單堂課日平均點閱數","課堂點閱數","單堂課點閱數","單堂課已測驗人數","核心能力","課組+課名")%>%
+  rename("課組名稱" = "課組名稱.x", "單堂課名稱" = "單堂課名稱.x")%>%
+  distinct()%>%
+  #去除課組+課名重複的
+  mutate(updatemonth = substring(單堂課上架日,1,7))%>%
+  #創造一個月份欄位來去除7月上架的
+  filter(updatemonth != "2020-07")%>%
+  filter(!updatemonth %in% c(44026,44027))
+```
+
+
+#前台資料依產業別來看
+```{r 資料型態轉換 }
+# Check columns classes
+sapply(CA_list, class)
+CAcols.num <- c("index","總帳號數","期間閱讀人數","期間上課總數","期間測驗總數","期間領證張數","平均每人點閱次數= 期間上課總數 / 總帳號數","app期間閱讀人數","app期間上課總數","app平均每人點閱次數= app期間上課總數 / 總帳號數","TOP1點閱次數","TOP2點閱次數","TOP3點閱次數","TOP4點閱次數","TOP5點閱次數","TOP6點閱次數","TOP7點閱次數","TOP8點閱次數","TOP9點閱次數","TOP10點閱次數")
+CA_list[CAcols.num] <- sapply(CA_list[CAcols.num],as.numeric)
+sapply(CA_list, class)
+
+categorycols.num <- c("編號")
+industry_category_list[categorycols.num] <- sapply(industry_category_list[categorycols.num],as.numeric)
+sapply(industry_category_list, class)
+
+sapply(CA_list2019, class)
+```
+
+```{r 前台產業別 }
+
+select_industry_category_list = industry_category_list %>%
+  distinct()%>%
+  select("編號","產業別")
+CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","總帳號數","期間閱讀人數","期間上課總數","期間測驗總數","期間領證張數","平均每人點閱次數= 期間上課總數 / 總帳號數","app期間閱讀人數","app期間上課總數","app平均每人點閱次數= app期間上課總數 / 總帳號數","產業別")
+
+
+#write.csv(CA_list_category,"D:/實習/天下創新學院/報表製作資料/企業_詳細資料.csv")
+
+ 
+```
+
+```{r }
+TOP1_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP1","TOP1點閱次數","產業別")%>%
+  rename("course" = "TOP1" , "點閱次數" = "TOP1點閱次數")
+
+
+TOP2_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP2","TOP2點閱次數","產業別")%>%
+  rename("course" = "TOP2" , "點閱次數" = "TOP2點閱次數")
+
+TOP3_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP3","TOP3點閱次數","產業別")%>%
+  rename("course" = "TOP3" , "點閱次數" = "TOP3點閱次數")
+
+TOP4_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP4","TOP4點閱次數","產業別")%>%
+  rename("course" = "TOP4" , "點閱次數" = "TOP4點閱次數")
+
+TOP5_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP5","TOP5點閱次數","產業別")%>%
+  rename("course" = "TOP5" , "點閱次數" = "TOP5點閱次數")
+
+TOP6_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP6","TOP6點閱次數","產業別")%>%
+  rename("course" = "TOP6" , "點閱次數" = "TOP6點閱次數")
+
+TOP7_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP7","TOP7點閱次數","產業別")%>%
+  rename("course" = "TOP7" , "點閱次數" = "TOP7點閱次數")
+
+TOP8_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP8","TOP8點閱次數","產業別")%>%
+  rename("course" = "TOP8" , "點閱次數" = "TOP8點閱次數")
+
+TOP9_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP9","TOP9點閱次數","產業別")%>%
+  rename("course" = "TOP9" , "點閱次數" = "TOP9點閱次數")
+
+TOP10_CA_list_category = CA_list%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP10","TOP10點閱次數","產業別")%>%
+  rename("course" = "TOP10" , "點閱次數" = "TOP10點閱次數")
+
+
+course_CA_list_category = TOP1_CA_list_category%>%
+  rbind(TOP2_CA_list_category)%>%
+  rbind(TOP3_CA_list_category)%>%
+  rbind(TOP4_CA_list_category)%>%
+  rbind(TOP5_CA_list_category)%>%
+  rbind(TOP6_CA_list_category)%>%
+  rbind(TOP7_CA_list_category)%>%
+  rbind(TOP8_CA_list_category)%>%
+  rbind(TOP9_CA_list_category)%>%
+  rbind(TOP10_CA_list_category)%>%
+  separate(.,course,c("TOP","course"),sep = " - ")%>%
+  #將字串做分割，方便從課程數進行加總
+  replace(is.na(.), 0)%>%
+  filter(產業別 != 0)%>%
+  left_join(subset(course_list, select = c("主頻道","次頻道","課組名稱","單堂課名稱")),by = c(course = "單堂課名稱"))
+
+
+write.csv(course_CA_list_category,"D:/實習/天下創新學院/報表製作資料/前台_課程_產業別.csv")
+
+client_industry = course_CA_list_category %>%
+  select("客戶名稱","產業別")%>%
+  distinct()
+#colnames(CA_list)
+```
+
+#串接資料依產業別來看
+```{r 串接資料} 
+API_client_course = API_client%>%
+  select("產業別","客戶名稱")%>%
+  inner_join(API_case_list,by = c("客戶名稱" = "備註"))%>%
+  select("產業別","客戶名稱","單堂課編號","單堂課名稱","介接次數")%>%
+  left_join(onecourse_list,by = "單堂課編號")%>%
+  select("產業別.x","客戶名稱","單堂課編號","單堂課名稱.x","介接次數","課組編號","課組名稱","種類","上線日期","產業別.y","核心能力")%>%
+  filter(客戶名稱 != "cw test")%>%
+  rename("客戶產業別" = "產業別.x","課程產業別" = "產業別.y","單堂課名稱" = "單堂課名稱.x")%>%
+  left_join(subset(course_list, select = c("主頻道","次頻道","單堂課編號")),by ="單堂課編號")
+
+
+#write.csv(API_client_course,"D:/實習/天下創新學院/報表製作資料/串接_課程_產業別.csv")
+
+
+```
+
+
+#核心力
+```{r}
+sapply(CA_list, class)
+companycourse_listcols.num <- c("單堂課日平均點閱數","課堂點閱數","單堂課點閱數","單堂課已測驗人數")
+companycourse_list[companycourse_listcols.num] <- sapply(companycourse_list[companycourse_listcols.num],as.numeric)
+sapply(companycourse_list, class)
+
+colnames(onecourse_list)
+glimpse(companycourse_list)
+
+
+```
+
+
+```{r 課程_總點閱數}
+#創建一個獨特欄位，因為有課名一樣，如果合併會對應到多個值
+onecourse_list = onecourse_list %>%
+  mutate("課組+課名" = paste(課組名稱,單堂課名稱,sep = "-"))
+
+#把介接次數加起來
+SUM_API_client_course = API_client_course %>%
+  mutate("課組課名" = paste(課組名稱,單堂課名稱,sep = "-"))%>%
+  #創建獨立欄位:課組課名
+  group_by(課組課名)%>%
+  summarise(介接次數= sum(as.numeric(介接次數)))%>%
+  #相加的時候才不會把同樣課名的放在一起
+  na.omit()
+  #因為全聯、奇美都沒有資料，所以加總的過程中會產生NA
+
+
+
+Allcourse_list = companycourse_list %>%
+  rename("課組名稱" = "課堂名稱(子頻道)")%>%
+  mutate("課組+課名" = paste(課組名稱,單堂課名稱,sep = "-"))%>%
+ #創建一個獨特欄位，因為課名一樣
+  left_join(onecourse_list, by = "課組+課名")%>%
+  select("主頻道","次頻道","單堂課編號","課組名稱.x","單堂課名稱.x","單堂課類型","單堂課上架日","單堂課日平均點閱數","課堂點閱數","單堂課點閱數","單堂課已測驗人數","核心能力","課組+課名")%>%
+  rename("課組名稱" = "課組名稱.x", "單堂課名稱" = "單堂課名稱.x")%>%
+  distinct()%>%
+  #去除課組+課名重複的
+  mutate(updatemonth = substring(單堂課上架日,1,7))%>%
+  #創造一個月份欄位來去除7月上架的
+  filter(updatemonth != "2020-07")%>%
+  filter(!updatemonth %in% c(44026,44027))%>%
+  #去除掉特殊值的問題，沒有正確轉換成日期格式，經資料確認後發現是7月份的
+  full_join(subset(SUM_API_client_course, select = c("課組課名","介接次數")),by = c("課組+課名" = "課組課名"))%>%
+  replace(is.na(.), 0) %>%   #將NA轉換成0
+  mutate("總點閱數" = select(., c("單堂課點閱數","介接次數")) %>% rowSums())%>%
+  mutate("堂數" = 1)
+  
+
+#write.csv(course_list,"D:/實習/天下創新學院/報表製作資料/課程_總點閱數.csv")
+  
+```
+
+```{r 核心力分布}
+
+core_course_list = course_list %>%
+  mutate(市場力 = if_else(str_detect(核心能力,'市場力'),true = "市場力",false = "無"))%>%
+  mutate(創新力 = if_else(str_detect(核心能力,'創新力'),true = "創新力",false = "無"))%>%
+  mutate(數位力 = if_else(str_detect(核心能力,'數位力'),true = "數位力",false = "無"))%>%
+  mutate(管理力 = if_else(str_detect(核心能力,'管理力'),true = "管理力",false = "無"))%>%
+  mutate(策略力 = if_else(str_detect(核心能力,'策略力'),true = "策略力	",false = "無"))%>%
+  mutate(領導力 = if_else(str_detect(核心能力,'領導力'),true = "領導力",false = "無"))%>%
+  mutate(經營力 = if_else(str_detect(核心能力,'經營力'),true = "經營力	",false = "無"))%>%
+  mutate(國際視野 = if_else(str_detect(核心能力,'國際視野'),true = "國際視野",false = "無"))%>%
+  gather(.,"核心能力名稱","核心能力",c(市場力,創新力,數位力,管理力,策略力,領導力,經營力,國際視野))%>%
+  #進行轉置
+  filter(核心能力!= "無")%>%
+  select(-核心能力名稱)%>%
+  mutate("堂數" = 1)
+
+write.csv(core_course_list,"D:/實習/天下創新學院/報表製作資料/核心能力_總點閱數.csv")
+
+table(core_course_list$市場力)
+table(core_process$創新力)
+table(core_process$數位力)
+table(core_process$管理力)
+table(core_process$策略力)
+table(core_process$領導力)
+table(core_process$經營力)
+table(core_process$國際視野)
+
+
+#write.csv(core_process,"D:/實習/天下創新學院/報表製作資料/核心能力分隔.csv")
+  
+```
+
+
+
+```{r pressure, echo=FALSE}
+
+core_stream = read_xlsx("D:/實習/天下創新學院/報表製作資料/串接資料.xlsx")
+
+core_stream_process = core_stream %>%
+  mutate(市場力 = if_else(str_detect(核心能力,'市場力'),true = "市場力",false = "無"))%>%
+  mutate(創新力 = if_else(str_detect(核心能力,'創新力'),true = "創新力",false = "無"))%>%
+  mutate(數位力 = if_else(str_detect(核心能力,'數位力'),true = "數位力",false = "無"))%>%
+  mutate(管理力 = if_else(str_detect(核心能力,'管理力'),true = "管理力",false = "無"))%>%
+  mutate(策略力 = if_else(str_detect(核心能力,'策略力'),true = "策略力	",false = "無"))%>%
+  mutate(領導力 = if_else(str_detect(核心能力,'領導力'),true = "領導力",false = "無"))%>%
+  mutate(經營力 = if_else(str_detect(核心能力,'經營力'),true = "經營力	",false = "無"))%>%
+  mutate(國際視野 = if_else(str_detect(核心能力,'國際視野'),true = "國際視野",false = "無"))
+
+write.csv(core_stream_process,"D:/實習/天下創新學院/報表製作資料/串接資料.csv")
+
+table(core_process$市場力)
+table(core_process$創新力)
+table(core_process$數位力)
+table(core_process$管理力)
+table(core_process$策略力)
+table(core_process$領導力)
+table(core_process$經營力)
+table(core_process$國際視野)
+
+
+  
+```
+
+#年度資料閱讀總數比較
+```{r}
+
+TOP1_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP1","點閱次數_1","產業別")%>%
+  rename("course" = "TOP1" , "點閱次數" = "點閱次數_1")
+
+TOP2_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP2","點閱次數_2","產業別")%>%
+  rename("course" = "TOP2" , "點閱次數" = "點閱次數_2")
+TOP3_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP3","點閱次數_3","產業別")%>%
+  rename("course" = "TOP3" , "點閱次數" = "點閱次數_3")
+TOP4_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP4","點閱次數_4","產業別")%>%
+  rename("course" = "TOP4" , "點閱次數" = "點閱次數_4")
+TOP5_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP5","點閱次數_5","產業別")%>%
+  rename("course" = "TOP5" , "點閱次數" = "點閱次數_5")
+TOP6_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP6","點閱次數_6","產業別")%>%
+  rename("course" = "TOP6" , "點閱次數" = "點閱次數_6")
+
+TOP7_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP7","點閱次數_7","產業別")%>%
+  rename("course" = "TOP7" , "點閱次數" = "點閱次數_7")
+TOP8_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP8","點閱次數_8","產業別")%>%
+  rename("course" = "TOP8" , "點閱次數" = "點閱次數_8")
+TOP9_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP9","點閱次數_9","產業別")%>%
+  rename("course" = "TOP9" , "點閱次數" = "點閱次數_9")
+TOP10_2019CA_list_category = CA_list2019%>%
+  left_join(select_industry_category_list,by = c("index" = "編號"))%>%
+  select("年份","客戶名稱","index","TOP10","點閱次數_10","產業別")%>%
+  rename("course" = "TOP10" , "點閱次數" = "點閱次數_10")
+
+course_2019CA_list_category = TOP1_2019CA_list_category%>%
+  rbind(TOP2_2019CA_list_category)%>%
+  rbind(TOP3_2019CA_list_category)%>%
+  rbind(TOP4_2019CA_list_category)%>%
+  rbind(TOP5_2019CA_list_category)%>%
+  rbind(TOP6_2019CA_list_category)%>%
+  rbind(TOP7_2019CA_list_category)%>%
+  rbind(TOP8_2019CA_list_category)%>%
+  rbind(TOP9_2019CA_list_category)%>%
+  rbind(TOP10_2019CA_list_category)%>%
+  separate(.,course,c("TOP","course"),sep = " - ")%>%
+  #將字串做分割，方便從課程數進行加總
+  replace(is.na(.), 0)%>%
+  filter(產業別 != 0)%>%
+  left_join(subset(course_list, select = c("主頻道","次頻道","課組名稱","單堂課名稱")),by = c(course = "單堂課名稱"))
+
+write.csv(course_2019CA_list_category,"D:/實習/天下創新學院/報表製作資料/2019前台_課程_產業別.csv")
+
+```
